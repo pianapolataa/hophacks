@@ -193,6 +193,29 @@
     </div>
 
     <script>
+        // Fetch baseline data from localStorage
+        function getBaselineData() {
+            let stored = localStorage.getItem("dataBoxes");
+            if (!stored) return null;
+
+            let data = JSON.parse(stored);
+
+            return {
+                avg_sbp: Number(data["Baseline Measurements"]["Average daytime resting SBP"]),
+                avg_dbp: Number(data["Baseline Measurements"]["Average daytime resting DBP"]),
+                baseline_hr: Number(data["Baseline Measurements"]["Baseline heart rate (bpm)"]),
+                age: Number(data["General Information"]["Age"]),
+                sex: data["General Information"]["Sex"],
+                bmi: Number(data["General Information"]["BMI"]),
+                diabetes: data["General Information"]["Diabetes"] ? 1 : 0,
+                sodium_intake: Number(data["Extra Information"]["Sodium Intake (mg)"]),
+                exercise_today: Number(data["Extra Information"]["Exercise (hours)"]),
+                current_sbp: Number(data["Current Readings"]["SBP"]),
+                current_dbp: Number(data["Current Readings"]["DBP"]),
+                current_hr: Number(data["Current Readings"]["Heart Rate (BPM)"])
+            };
+        }
+
         const predictButton = document.getElementById('predict-btn');
         const resultsDiv = document.getElementById('prediction-results');
 
@@ -208,7 +231,7 @@
             }
 
             // Load patient data from localStorage
-            let patientData = {};
+            let patientData = getBaselineData();
             const stored = localStorage.getItem("patient_data");
             if (stored) {
                 patientData = JSON.parse(stored);

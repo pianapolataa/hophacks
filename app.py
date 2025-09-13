@@ -23,6 +23,7 @@ def predict_experiment():
     }
     """
     data = request.json
+    print(data)
     dosage = data.get("dosage")
     time_of_day = data.get("time_of_day")
     patient_data = data.get("patient_data", {})
