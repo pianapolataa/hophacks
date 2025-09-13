@@ -15,9 +15,8 @@ def sample_baseline():
         "exercise_today": np.random.exponential(0.5),
     }
 
-def sample_dose():
-    return np.random.choice([0, 2.5, 5, 10, 20, 40],
-                            p=[0.3, 0.1, 0.2, 0.25, 0.1, 0.05])
+# fixed set of doses (instead of random sampling)
+DOSES = [0, 2.5, 5, 10, 20, 40]
 
 def compute_sensitivity(baseline):
     sens = 1.0
@@ -40,50 +39,50 @@ def drug_effect_sbp(dose, sensitivity, t):
     t_peak = 1.5  # hours until max effect
     return -peak * ((t / t_peak) * np.exp(1 - t / t_peak))
 
-
 def drug_effect_dbp(dose, sensitivity, t):
     if dose == 0: return 0
     peak = 2.0 * dose * sensitivity
-    t_peak = 1.5  # hours until max effect
+    t_peak = 1.5
     return -peak * ((t / t_peak) * np.exp(1 - t / t_peak))
 
 def generate_patient(pid):
     baseline = sample_baseline()
-    dose = sample_dose()
     sens = compute_sensitivity(baseline)
     dose_time = np.random.randint(0, 24)
 
     records = []
-    for t in range(8):
-        hour_of_day = (dose_time + t) % 24
-        circ_bp, circ_hr = circadian_factor(hour_of_day)
+    for j, dose in enumerate(DOSES):
+        sub_pid = pid * len(DOSES) + j  # 🔹 unique patient_id per dose
+        for t in range(8):
+            hour_of_day = (dose_time + t) % 24
+            circ_bp, circ_hr = circadian_factor(hour_of_day)
 
-        sbp = baseline["avg_sbp"] + 0.3*circ_bp + drug_effect_sbp(dose, sens, t) + np.random.normal(0,1.5)
-        dbp = baseline["avg_dbp"] + 0.3*circ_bp + drug_effect_dbp(dose, sens, t) + np.random.normal(0,1)
-        hr  = baseline["baseline_hr"] + circ_hr - 0.05*drug_effect_sbp(dose, sens, t) + np.random.normal(0,1)
+            sbp = baseline["avg_sbp"] + 0.3*circ_bp + drug_effect_sbp(dose, sens, t) + np.random.normal(0,1.5)
+            dbp = baseline["avg_dbp"] + 0.3*circ_bp + drug_effect_dbp(dose, sens, t) + np.random.normal(0,1)
+            hr  = baseline["baseline_hr"] + circ_hr - 0.05*drug_effect_sbp(dose, sens, t) + np.random.normal(0,1)
 
-        records.append({
-            "patient_id": pid,
-            "avg_sbp": baseline["avg_sbp"],
-            "avg_dbp": baseline["avg_dbp"],
-            "baseline_hr": baseline["baseline_hr"],
-            "age": baseline["age"],
-            "sex": baseline["sex"],
-            "bmi": baseline["bmi"],
-            "diabetes": baseline["diabetes"],
-            "sodium_intake": baseline["sodium_intake"],
-            "exercise_today": baseline["exercise_today"],
-            "dose": dose,
-            "current_time": dose_time,
-            "current_sbp": sbp,
-            "current_dbp": dbp,
-            "current_hr": hr,
-            "sensitivity": sens,
-            "sbp": sbp,
-            "dbp": dbp,
-            "hr": hr,
-            "t_postdose": t
-        })
+            records.append({
+                "patient_id": sub_pid,   # 🔹 looks just like before
+                "avg_sbp": baseline["avg_sbp"],
+                "avg_dbp": baseline["avg_dbp"],
+                "baseline_hr": baseline["baseline_hr"],
+                "age": baseline["age"],
+                "sex": baseline["sex"],
+                "bmi": baseline["bmi"],
+                "diabetes": baseline["diabetes"],
+                "sodium_intake": baseline["sodium_intake"],
+                "exercise_today": baseline["exercise_today"],
+                "dose": dose,
+                "current_time": dose_time,
+                "current_sbp": sbp,
+                "current_dbp": dbp,
+                "current_hr": hr,
+                "sensitivity": sens,
+                "sbp": sbp,
+                "dbp": dbp,
+                "hr": hr,
+                "t_postdose": t
+            })
     return records
 
 def generate_dataset(n_patients=100):
@@ -104,7 +103,7 @@ def prepare_arrays(df):
 
     X, y = [], []
     for pid, g in df.groupby("patient_id"):
-        g = g.sort_values("t_postdose")
+        g = g.sort_values(["dose","t_postdose"])  # keep consistent ordering
         X.append(g[input_cols].values)
         y.append(g[output_cols].values)
 
