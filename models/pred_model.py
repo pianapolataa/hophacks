@@ -26,7 +26,7 @@ from sklearn.preprocessing import StandardScaler
 # ───────────────────── CONFIG ──────────────────────
 DEVICE  = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 SEQ_LEN = 8
-BATCH_SIZE, EPOCHS, LR = 64, 50000, 1e-3
+BATCH_SIZE, EPOCHS, LR = 64, 200, 1e-3
 TEACHER_FORCING_RATIO = .5
 RANDOM_SEED = 42
 SENS_WEIGHT = 1.0

@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-
+import math
 
 def sample_baseline():
     return {
@@ -30,39 +30,37 @@ def compute_sensitivity(baseline):
     return sens
 
 def circadian_factor(hour):
-    bp_factor = 5 * np.sin(2 * np.pi * (hour - 9) / 24)
-    hr_factor = 3 * np.sin(2 * np.pi * (hour - 15) / 24)
+    bp_factor = 2 * np.sin(2 * np.pi * (hour - 9) / 24)
+    hr_factor = 1.5 * np.sin(2 * np.pi * (hour - 15) / 24)
     return bp_factor, hr_factor
 
-def drug_effect(dose, sensitivity, t):
-    if dose == 0:
-        return 0
-    peak = -0.6 * dose * sensitivity
-    return peak * np.exp(-0.3 * t)
+def drug_effect_sbp(dose, sensitivity, t):
+    if dose == 0: return 0
+    peak = 2.0 * dose * sensitivity
+    t_peak = 1.5  # hours until max effect
+    return -peak * ((t / t_peak) * np.exp(1 - t / t_peak))
+
+
+def drug_effect_dbp(dose, sensitivity, t):
+    if dose == 0: return 0
+    peak = 2.0 * dose * sensitivity
+    t_peak = 1.5  # hours until max effect
+    return -peak * ((t / t_peak) * np.exp(1 - t / t_peak))
 
 def generate_patient(pid):
     baseline = sample_baseline()
     dose = sample_dose()
     sens = compute_sensitivity(baseline)
-
-    # Dose given now
     dose_time = np.random.randint(0, 24)
 
-    # Current vitals at dose time (t=0)
-    circ_bp0, circ_hr0 = circadian_factor(dose_time)
-    current_sbp = baseline["avg_sbp"] + circ_bp0 + np.random.normal(0, 2)
-    current_dbp = baseline["avg_dbp"] + 0.6 * circ_bp0 + np.random.normal(0, 1.5)
-    current_hr = baseline["baseline_hr"] + circ_hr0 + np.random.normal(0, 1)
-
     records = []
-    for t in range(8):  # next 8h
+    for t in range(8):
         hour_of_day = (dose_time + t) % 24
         circ_bp, circ_hr = circadian_factor(hour_of_day)
-        drug_delta = drug_effect(dose, sens, t)
 
-        sbp = baseline["avg_sbp"] + circ_bp + drug_delta + np.random.normal(0, 2)
-        dbp = baseline["avg_dbp"] + 0.6 * circ_bp + 0.5 * drug_delta + np.random.normal(0, 1.5)
-        hr = baseline["baseline_hr"] + circ_hr - 0.05 * drug_delta + np.random.normal(0, 1)
+        sbp = baseline["avg_sbp"] + 0.3*circ_bp + drug_effect_sbp(dose, sens, t) + np.random.normal(0,1.5)
+        dbp = baseline["avg_dbp"] + 0.3*circ_bp + drug_effect_dbp(dose, sens, t) + np.random.normal(0,1)
+        hr  = baseline["baseline_hr"] + circ_hr - 0.05*drug_effect_sbp(dose, sens, t) + np.random.normal(0,1)
 
         records.append({
             "patient_id": pid,
@@ -76,11 +74,11 @@ def generate_patient(pid):
             "sodium_intake": baseline["sodium_intake"],
             "exercise_today": baseline["exercise_today"],
             "dose": dose,
-            "current_time": dose_time,   # input, constant across sequence
-            "current_sbp": current_sbp,
-            "current_dbp": current_dbp,
-            "current_hr": current_hr,
-            "sensitivity": sens,          # output, not input
+            "current_time": dose_time,
+            "current_sbp": sbp,
+            "current_dbp": dbp,
+            "current_hr": hr,
+            "sensitivity": sens,
             "sbp": sbp,
             "dbp": dbp,
             "hr": hr,
@@ -94,16 +92,14 @@ def generate_dataset(n_patients=100):
         all_records.extend(generate_patient(pid))
     return pd.DataFrame(all_records)
 
-
 def prepare_arrays(df):
     input_cols = [
-        "avg_sbp", "avg_dbp", "baseline_hr", "age", "sex", "bmi", "diabetes",
-        "sodium_intake", "exercise_today", "dose", "current_time",
-        "current_sbp", "current_dbp", "current_hr"
+        "avg_sbp","avg_dbp","baseline_hr","age","sex","bmi","diabetes",
+        "sodium_intake","exercise_today","dose","current_time",
+        "current_sbp","current_dbp","current_hr"
     ]
-    output_cols = ["sbp", "dbp", "hr", "sensitivity"]  # sensitivity is now output
+    output_cols = ["sbp","dbp","hr","sensitivity"]
 
-    # Convert categorical sex to numeric
     df["sex"] = (df["sex"] == "F").astype(int)
 
     X, y = [], []
@@ -114,15 +110,13 @@ def prepare_arrays(df):
 
     return np.array(X), np.array(y)
 
-
-if __name__ == "__main__":
+if __name__=="__main__":
     df = generate_dataset(n_patients=20000)
     df.to_csv("synthetic_bp_data.csv", index=False)
     print("CSV saved with shape:", df.shape)
 
     X, y = prepare_arrays(df)
     np.savez("synthetic_bp_data.npz", X=X, y=y)
-
     print("NumPy arrays saved:")
-    print("X shape:", X.shape)  # (n_patients, 8, num_features)
-    print("y shape:", y.shape)  # (n_patients, 8, 4)  # includes sensitivity
+    print("X shape:", X.shape)
+    print("y shape:", y.shape)
