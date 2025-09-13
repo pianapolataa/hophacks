@@ -12,27 +12,38 @@
         }
 
         /* Sidebar */
+/* Sidebar */
+.sidebar {
+    background-color: #05234a; /* dark blue */
+    width: 220px;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding-top: 20px;
+    gap: 6px;
+}
+
 .sidebar button {
     background: none;
     border: none;
     color: white;
-    padding: 15px;
+    padding: 14px 18px;
     text-align: left;
-    font-size: 20px;  /* larger text */
+    font-size: 18px; /* bigger text */
     cursor: pointer;
-    transition: background 0.3s;
+    transition: background 0.2s;
+    border-radius: 6px;
+    margin: 0 10px;
 }
 
 .sidebar button:hover {
-    background-color: #0a3d80;
+    background-color: #0a3d80; /* mid-blue */
 }
 
-/* Special style for the Home button */
 .sidebar .home-btn {
-    background-color: #0a3d80; /* darker blue background */
-    font-weight: bold;         /* optional: make it stand out */
+    background-color: #0a3d80; /* highlight home button */
+    font-weight: 700;
 }
-
         body {
             margin: 0;
             font-family: Arial, sans-serif;
@@ -41,30 +52,6 @@
         }
 
         /* Sidebar */
-        .sidebar {
-            background-color: #05234a; /* dark blue */
-            width: 200px;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            padding-top: 20px;
-        }
-
-        .sidebar button {
-            background: none;
-            border: none;
-            color:  white;
-            padding: 15px;
-            text-align: left;
-            font-size: 16px;
-            cursor: pointer;
-            transition: background 0.3s;
-        }
-
-        .sidebar button:hover {
-            background-color: #0a3d80;
-        }
-
 
         /* Main content */
         .main-content {
