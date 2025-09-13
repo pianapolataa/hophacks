@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Home Page</title>
+    <title>MedTwin — Home</title>
     <style>
         body {
             margin: 0;
@@ -12,46 +12,38 @@
         }
 
         /* Sidebar */
-/* Sidebar */
-.sidebar {
-    background-color: #05234a; /* dark blue */
-    width: 240px;
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-    padding-top: 20px;
-    gap: 6px;
-}
-
-.sidebar button {
-    background: none;
-    border: none;
-    color: white;
-    padding: 14px 18px;
-    text-align: left;
-    font-size: 18px; /* bigger text */
-    cursor: pointer;
-    transition: background 0.2s;
-    border-radius: 6px;
-    margin: 0 10px;
-}
-
-.sidebar button:hover {
-    background-color: #0a3d80; /* mid-blue */
-}
-
-.sidebar .home-btn {
-    background-color: #0a3d80; /* highlight home button */
-    font-weight: 700;
-}
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background-color: #a0c4f2; /* light blue */
+        /* Sidebar */
+        .sidebar {
+            background-color: #05234a;
+            width: 240px;
+            height: 100vh;
             display: flex;
+            flex-direction: column;
+            padding-top: 20px;
+            gap: 6px;
         }
 
-        /* Sidebar */
+        .sidebar button {
+            background: none;
+            border: none;
+            color: white;
+            padding: 14px 18px;
+            text-align: left;
+            font-size: 18px;
+            cursor: pointer;
+            transition: background 0.2s;
+            border-radius: 6px;
+            margin: 0 10px;
+        }
+
+        .sidebar button:hover {
+            background-color: #0a3d80;
+        }
+
+        .sidebar .home-btn {
+            background-color: #0a3d80;
+            font-weight: 700;
+        }
 
         /* Main content */
         .main-content {
@@ -62,17 +54,54 @@
         h1 {
             color: #05234a;
             font-family: 'Merriweather', serif;
-            font-size: 48px;
-            margin: 0 0 8px 0;
+            font-size: 46px;
+            margin: 0 0 16px 0;
         }
 
+        .lead {
+            font-size: 22px;
+            color: #05234a;
+            margin-bottom: 32px;
+        }
+
+        .card-container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr); /* two per row */
+            gap: 28px;
+        }
+
+        .card {
+            background: #e6eff8;
+            border-radius: 12px;
+            padding: 28px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .card h3 {
+            margin-top: 0;
+            color: #05234a;
+            font-size: 24px;
+        }
+
+        .card p {
+            margin: 12px 0 0;
+            color: #333;
+            font-size: 18px;
+            line-height: 1.5;
+        }
+
+        @media (max-width: 800px) {
+            .card-container {
+                grid-template-columns: 1fr; /* one per row on small screens */
+            }
+        }
 
     </style>
 </head>
 <body>
     <!-- Sidebar -->
     <div class="sidebar">
-        <button class="home-btn"location.href='/'">Home</button>
+        <button class="home-btn" onclick="location.href='/'">Home</button>
         <button onclick="location.href='/data'">Data</button>
         <button onclick="location.href='/experiment'">Experiment</button>
         <button onclick="location.href='/effects'">Side Effects</button>
@@ -81,11 +110,33 @@
 
     <!-- Main content -->
     <div class="main-content">
-        <h1>Home Page</h1>
-        <p class="lead">Update information for the patient here.</p>
-        <div id="boxes" class="boxes-container"></div>
+        <h1>Welcome to MedTwin</h1>
+        <p class="lead">Your personalized digital twin for safer, faster, and more effective hypertension treatment.</p>
+
+        <div class="card-container">
+            <div class="card">
+                <h3>What is MedTwin?</h3>
+                <p>MedTwin simplifies the process of finding the right medication dosage by creating a digital twin of the patient, giving patients and doctors a safe way to experiment and predict responses before trying them in real life.
+                </p>
+            </div>
+
+            <div class="card">
+                <h3>Why It Matters</h3>
+<p>Simplifies trial-and-error process by creating a digital twin powered by clinical trial data and machine learning. The digital twin can learn a patient’s unique sensitivity to medication, and guide doctors and patients toward the right dosage and timing more quickly and confidently.</p>
+            </div>
+
+            <div class="card">
+                <h3>How It Works</h3>
+                <p>1. Input the baseline data (blood pressure, heart rate, age, BMI, lifestyle).<br>2. Run simulations to see 8-hour predictions.<br>3. Get optimized dosage and timing suggestions.</p>
+            </div>
+
+            <div class="card">
+                <h3>Features</h3>
+                <p>- Data input page for personal details.<br>- Interactive experimentation dashboard.<br>- Side effect monitoring and alerts.
+                    <br>- Suggestions on when and how to take Lisinopril.</p>
+            </div>
+
+        </div>
     </div>
-
-
 </body>
 </html>
