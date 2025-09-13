@@ -48,6 +48,7 @@
         .main-content {
             flex: 1;
             padding: 40px;
+            position: relative;
         }
 
         h1 { color: #05234a; }
@@ -77,6 +78,39 @@
             border-radius: 12px;
             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
+
+        /* Loading overlay */
+        #loadingOverlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255,255,255,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            color: #05234a;
+            font-weight: bold;
+            z-index: 1000;
+            display: none; /* hidden by default */
+        }
+
+        .spinner {
+            border: 6px solid #f3f3f3;
+            border-top: 6px solid #05234a;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin-right: 12px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg);}
+            100% { transform: rotate(360deg);}
+        }
     </style>
 </head>
 <body>
@@ -89,8 +123,13 @@
     </div>
 
     <div class="main-content">
+        <div id="loadingOverlay">
+            <div class="spinner"></div>
+            Loading suggestions...
+        </div>
+
         <h1>Dosage Suggestions</h1>
-        <p>Top 5 recommended actions based on your input:</p>
+        <p>Top 5 recommended actions based on your stats:</p>
 
         <table id="suggestionsTable">
             <thead>
@@ -112,6 +151,10 @@
     </div>
 
     <script>
+        function showLoading(show) {
+            document.getElementById("loadingOverlay").style.display = show ? "flex" : "none";
+        }
+
         // Fetch baseline data from localStorage
         function getBaselineData() {
             let stored = localStorage.getItem("dataBoxes");
@@ -128,7 +171,10 @@
                 bmi: Number(data["General Information"]["BMI"]),
                 diabetes: data["General Information"]["Diabetes"] ? 1 : 0,
                 sodium_intake: Number(data["Extra Information"]["Sodium Intake (mg)"]),
-                exercise_today: Number(data["Extra Information"]["Exercise (hours)"])
+                exercise_today: Number(data["Extra Information"]["Exercise (hours)"]),
+                current_sbp: Number(data["Current Readings"]["SBP"]),
+                current_dbp: Number(data["Current Readings"]["DBP"]),
+                current_hr: Number(data["Current Readings"]["Heart Rate (BPM)"])
             };
         }
 
@@ -139,15 +185,23 @@
                 return;
             }
 
-            const response = await fetch("/api/get_suggestions", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(baselineData)
-            });
+            showLoading(true);
+            try {
+                const response = await fetch("/api/get_suggestions", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(baselineData)
+                });
 
-            const result = await response.json();
-            renderSuggestions(result.top_5);
-            renderTop1Chart(result.top_1_prediction);
+                const result = await response.json();
+                renderSuggestions(result.top_5);
+                renderTop1Chart(result.top_1_prediction);
+            } catch (err) {
+                console.error("Error fetching suggestions:", err);
+                alert("Failed to fetch suggestions");
+            } finally {
+                showLoading(false);
+            }
         }
 
         function renderSuggestions(top5) {
