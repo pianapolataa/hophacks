@@ -21,7 +21,7 @@ def compute_reward(sbp_traj, dbp_traj, hr_traj, patient):
     return reward
 
 dose_grid = [0, 2.5, 5, 10, 20, 40]
-hour_grid = list(range(24))
+hour_grid = [8, 9, 10, 11, 12, 13, 14,15, 16, 17, 18, 19, 20, 21, 22]
 sodium_grid = list(range(0, 2001, 100))  # delta sodium
 exercise_grid = [0.5, 1.0, 1.5, 2.0]     # delta exercise
 TOP_K = 5
