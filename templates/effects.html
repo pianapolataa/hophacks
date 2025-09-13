@@ -2,18 +2,18 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Flask Sidebar Layout</title>
+    <title>Side Effects Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
             margin: 0;
             font-family: Arial, sans-serif;
-            background-color: #a0c4f2; /* light blue */
+            background-color: #a0c4f2;
             display: flex;
         }
 
-        /* Sidebar */
         .sidebar {
-            background-color: #05234a; /* dark blue */
+            background-color: #05234a;
             width: 200px;
             height: 100vh;
             display: flex;
@@ -32,23 +32,33 @@
             transition: background 0.3s;
         }
 
-        .sidebar button:hover {
-            background-color: #0a3d80;
-        }
+        .sidebar button:hover { background-color: #0a3d80; }
 
-        /* Main content */
         .main-content {
             flex: 1;
             padding: 40px;
         }
 
-        h1 {
-            color: #05234a;
+        h1 { color: #05234a; }
+
+        .dashboard {
+            margin-top: 20px;
+            background-color: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
+
+        .dashboard input, .dashboard button {
+            margin: 5px 5px 15px 0;
+            padding: 8px;
+            font-size: 14px;
+        }
+
+        .warning { color: red; font-weight: bold; }
     </style>
 </head>
 <body>
-    <!-- Sidebar -->
     <div class="sidebar">
         <button onclick="location.href='/'">Home</button>
         <button onclick="location.href='/data'">Data</button>
@@ -57,10 +67,137 @@
         <button onclick="location.href='/rl'">RL</button>
     </div>
 
-    <!-- Main content -->
     <div class="main-content">
-        <h1>Effects</h1>
-        <p>This is the page for effects</p>
+        <h1>Side Effects Monitoring</h1>
+        <p>Monitor your side-effect severity over time and check against safe thresholds.</p>
+
+        <div class="dashboard">
+            <label>Enter threshold point:</label><br>
+            <input type="number" id="thresholdTime" placeholder="Time (t)">
+            <input type="number" id="thresholdSeverity" placeholder="Threshold severity">
+            <button onclick="addThresholdPoint()">Add Threshold</button>
+            <button onclick="clearThresholds()">Clear Thresholds</button><br>
+
+            <label>Enter observed side effect:</label><br>
+            <input type="number" id="timeInput" placeholder="Time (t)">
+            <input type="number" id="severityInput" placeholder="Observed severity">
+            <button onclick="addObservation()">Add Observation</button>
+            <button onclick="clearObservations()">Clear Observations</button><br>
+
+            <p id="warningMessage" class="warning"></p>
+
+            <canvas id="sideEffectChart" width="700" height="250"></canvas>
+        </div>
     </div>
+
+    <script>
+        // Load saved threshold points and observations
+        let thresholdPoints = JSON.parse(localStorage.getItem('thresholdPoints') || '[]');
+        let observations = JSON.parse(localStorage.getItem('observations') || '[]');
+
+        const ctx = document.getElementById('sideEffectChart').getContext('2d');
+        let chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                datasets: [
+                    {
+                        label: 'Threshold',
+                        data: thresholdPoints.map(p => ({x: p.t, y: p.s})),
+                        borderColor: 'red',
+                        backgroundColor: 'red',
+                        showLine: true,
+                        fill: false,
+                        tension: 0.2,
+                        pointRadius: 5
+                    },
+                    {
+                        label: 'Your Observations',
+                        data: observations.map(o => ({x: o.t, y: o.s})),
+                        borderColor: 'blue',
+                        backgroundColor: 'blue',
+                        showLine: true, // <-- connect user points
+                        fill: false,
+                        tension: 0.2,
+                        pointRadius: 5
+                    }
+                ]
+            },
+            options: {
+                scales: {
+                    x: { type: 'linear', title: { display: true, text: 'Time (t)' } },
+                    y: { title: { display: true, text: 'Severity' } }
+                }
+            }
+        });
+
+        function addThresholdPoint() {
+            const t = parseFloat(document.getElementById('thresholdTime').value);
+            const s = parseFloat(document.getElementById('thresholdSeverity').value);
+            if (isNaN(t) || isNaN(s)) return alert('Enter valid threshold numbers.');
+
+            thresholdPoints.push({t, s});
+            thresholdPoints.sort((a,b) => a.t - b.t);
+            localStorage.setItem('thresholdPoints', JSON.stringify(thresholdPoints));
+
+            chart.data.datasets[0].data = thresholdPoints.map(p => ({x: p.t, y: p.s}));
+            chart.update();
+
+            document.getElementById('thresholdTime').value = '';
+            document.getElementById('thresholdSeverity').value = '';
+        }
+
+        function addObservation() {
+            const t = parseFloat(document.getElementById('timeInput').value);
+            const s = parseFloat(document.getElementById('severityInput').value);
+            if (isNaN(t) || isNaN(s)) return alert('Enter valid observation numbers.');
+
+            observations.push({t, s});
+            observations.sort((a,b) => a.t - b.t);
+            localStorage.setItem('observations', JSON.stringify(observations));
+
+            chart.data.datasets[1].data = observations.map(o => ({x: o.t, y: o.s}));
+            chart.update();
+
+            // Linear interpolation for threshold at t
+            let thresholdAtT = null;
+            if (thresholdPoints.length === 0) thresholdAtT = Infinity;
+            else if (t <= thresholdPoints[0].t) thresholdAtT = thresholdPoints[0].s;
+            else if (t >= thresholdPoints[thresholdPoints.length-1].t) thresholdAtT = thresholdPoints[thresholdPoints.length-1].s;
+            else {
+                for (let i=0; i<thresholdPoints.length-1; i++) {
+                    const p1 = thresholdPoints[i];
+                    const p2 = thresholdPoints[i+1];
+                    if (t >= p1.t && t <= p2.t) {
+                        const ratio = (t - p1.t)/(p2.t - p1.t);
+                        thresholdAtT = p1.s + ratio*(p2.s - p1.s);
+                        break;
+                    }
+                }
+            }
+
+            document.getElementById('warningMessage').textContent =
+                s > thresholdAtT ? '⚠️ Severity exceeds threshold! Go to hospital.' : '✅ Severity within acceptable range.';
+
+            document.getElementById('timeInput').value = '';
+            document.getElementById('severityInput').value = '';
+        }
+
+        function clearThresholds() {
+            if (!confirm('Clear all threshold points?')) return;
+            thresholdPoints = [];
+            localStorage.removeItem('thresholdPoints');
+            chart.data.datasets[0].data = [];
+            chart.update();
+        }
+
+        function clearObservations() {
+            if (!confirm('Clear all observations?')) return;
+            observations = [];
+            localStorage.removeItem('observations');
+            chart.data.datasets[1].data = [];
+            chart.update();
+            document.getElementById('warningMessage').textContent = '';
+        }
+    </script>
 </body>
 </html>
