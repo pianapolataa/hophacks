@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>S</title>
+    <title>Experiment</title>
     <style>
         body {
             margin: 0;
@@ -81,6 +81,15 @@
             font-size: 16px;
         }
 
+        .form-container select {
+            padding: 8px 12px;
+            font-size: 16px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            width: 120px;
+            margin-bottom: 14px;
+        }
+
         .form-container button {
             padding: 10px 16px;
             font-size: 16px;
@@ -90,18 +99,41 @@
             color: white;
             cursor: pointer;
         }
-select {
-    padding: 8px 12px;   /* space inside */
-    font-size: 16px;     /* larger text */
-    border-radius: 6px;  /* rounded corners */
-    border: 1px solid #ccc;
-    width: 120px;        /* control width */
-        margin-bottom: 14px; /* 👈 adds space below */
-
-}
 
         .form-container button:hover {
             background-color: #05234a;
+        }
+
+        #prediction-results {
+            margin-top: 20px;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        table, th, td {
+            border: 1px solid #ccc;
+        }
+
+        th, td {
+            padding: 8px;
+            text-align: center;
+        }
+
+        th {
+            background-color: #0a3d80;
+            color: white;
+        }
+
+        td {
+            background-color: #e0e7ff;
+        }
+
+        .error {
+            color: red;
+            margin-top: 10px;
         }
     </style>
 </head>
@@ -119,63 +151,110 @@ select {
     <div class="main-content">
         <h1>Experiment</h1>
         <p>This is the page for experiment</p>
-<div class="form-container">
-    <h2>Enter Values</h2>
 
-    <label for="value1">Time of Day:</label>
-    <select id="value1" name="value1">
-        <!-- Generate 24 options -->
-        <option value="1">12 A.M.</option>
-        <option value="2">1 A.M.</option>
-        <option value="3">2 A.M.</option>
-        <option value="4">3 A.M.</option>
-        <option value="5">4 A.M.</option>
-        <option value="6">5 A.M.</option>
-        <option value="7">6 A.M.</option>
-        <option value="8">7 A.M.</option>
-        <option value="9">8 A.M.</option>
-        <option value="10">9 A.M.</option>
-        <option value="11">10 A.M.</option>
-        <option value="12">11 A.M.</option>
-        <option value="13">12 P.M.</option>
-        <option value="14">1 P.M.</option>
-        <option value="15">2 P.M.</option>
-        <option value="16">3 P.M.</option>
-        <option value="17">4 P.M.</option>
-        <option value="18">5 P.M.</option>
-        <option value="19">6 P.M.</option>
-        <option value="20">7 P.M.</option>
-        <option value="21">8 P.M.</option>
-        <option value="22">9 P.M.</option>
-        <option value="23">10 P.M.</option>
-        <option value="24">11 P.M.</option>
-    </select>
+        <div class="form-container">
+            <h2>Enter Values</h2>
 
-    <label for="value2">Desired Dosage (ml):</label>
-    <input type="number" id="value2" name="value2" placeholder="Enter desired dosage">
+            <label for="value1">Time of Day:</label>
+            <select id="value1" name="value1">
+                <option value="1">12 A.M.</option>
+                <option value="2">1 A.M.</option>
+                <option value="3">2 A.M.</option>
+                <option value="4">3 A.M.</option>
+                <option value="5">4 A.M.</option>
+                <option value="6">5 A.M.</option>
+                <option value="7">6 A.M.</option>
+                <option value="8">7 A.M.</option>
+                <option value="9">8 A.M.</option>
+                <option value="10">9 A.M.</option>
+                <option value="11">10 A.M.</option>
+                <option value="12">11 A.M.</option>
+                <option value="13">12 P.M.</option>
+                <option value="14">1 P.M.</option>
+                <option value="15">2 P.M.</option>
+                <option value="16">3 P.M.</option>
+                <option value="17">4 P.M.</option>
+                <option value="18">5 P.M.</option>
+                <option value="19">6 P.M.</option>
+                <option value="20">7 P.M.</option>
+                <option value="21">8 P.M.</option>
+                <option value="22">9 P.M.</option>
+                <option value="23">10 P.M.</option>
+                <option value="24">11 P.M.</option>
+            </select>
 
-    <button type="button">Predict</button>
-</div>
+            <label for="value2">Desired Dosage (ml):</label>
+            <input type="number" id="value2" name="value2" placeholder="Enter desired dosage">
+
+            <button type="button" id="predict-btn">Predict</button>
+
+            <div id="prediction-results"></div>
+        </div>
     </div>
+
+    <script>
+        const predictButton = document.getElementById('predict-btn');
+        const resultsDiv = document.getElementById('prediction-results');
+
+        predictButton.addEventListener('click', async () => {
+            const dosage = parseFloat(document.getElementById('value2').value);
+            const timeOfDay = parseInt(document.getElementById('value1').value);
+
+            resultsDiv.innerHTML = ""; // Clear previous results
+
+            if (isNaN(dosage)) {
+                resultsDiv.innerHTML = "<div class='error'>Please enter a valid dosage!</div>";
+                return;
+            }
+
+            // Load patient data from localStorage
+            let patientData = {};
+            const stored = localStorage.getItem("patient_data");
+            if (stored) {
+                patientData = JSON.parse(stored);
+            }
+
+            const payload = {
+                dosage: dosage,
+                time_of_day: timeOfDay,
+                patient_data: patientData
+            };
+
+            try {
+                const response = await fetch("/api/predict_experiment", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+
+                if (response.ok) {
+                    // Build HTML table
+                    let html = `<h3>Predicted Next 8 Hours:</h3>
+                                <table>
+                                <tr><th>Hour</th><th>SBP</th><th>DBP</th><th>HR</th></tr>`;
+
+                    result.predictions.forEach(p => {
+                        html += `<tr>
+                                    <td>${p.target_hour-2}</td>
+                                    <td>${p.sbp_pred.toFixed(1)}</td>
+                                    <td>${p.dbp_pred.toFixed(1)}</td>
+                                    <td>${p.hr_pred.toFixed(1)}</td>
+                                 </tr>`;
+                    });
+
+                    html += `</table>`;
+                    html += `<p><strong>Sensitivity:</strong> ${result.sensitivity.toFixed(3)}</p>`;
+
+                    resultsDiv.innerHTML = html;
+
+                } else {
+                    resultsDiv.innerHTML = `<div class='error'>Error: ${result.error}</div>`;
+                }
+            } catch (err) {
+                resultsDiv.innerHTML = `<div class='error'>Request failed: ${err}</div>`;
+            }
+        });
+    </script>
 </body>
 </html>
-<script>
-    const predictButton = document.querySelector('.form-container button');
-
-    predictButton.addEventListener('click', () => {
-        const timeOfDay = document.getElementById('value1').value;
-        const dosage = document.getElementById('value2').value;
-
-        // Validation: check if dosage is empty
-        if (dosage === '') {
-            alert('Error: Please enter the desired dosage!');
-            return; // Stop further execution
-        }
-
-        // If input is valid, proceed
-        alert(`Time of Day: ${timeOfDay}\nDesired Dosage: ${dosage} ml`);
-
-        // TODO: Call prediction logic here
-    });
-</script>
-
