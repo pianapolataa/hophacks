@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Experiment</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
             margin: 0;
@@ -48,6 +49,7 @@
         .main-content {
             flex: 1;
             padding: 40px;
+            position: relative;
         }
 
         h1 {
@@ -57,12 +59,22 @@
             margin: 0 0 16px 0;
         }
 
+        /* horizontal layout container for form + chart */
+        .experiment-row {
+            display: flex;
+            gap: 24px;
+            align-items: flex-start;
+        }
+
         .form-container {
             margin-top: 20px;
             background: white;
             padding: 20px;
             border-radius: 8px;
-            max-width: 500px;
+            /* fixed width so chart can occupy space on the right */
+            width: 500px;
+            height: 540px;   /* 🔹 match chart height */
+            box-sizing: border-box;
         }
 
         .form-container label {
@@ -72,27 +84,27 @@
             color: #05234a;
         }
 
+        .form-container input, .form-container select, .form-container button {
+            margin-bottom: 14px;
+            font-size: 16px;
+        }
+
         .form-container input {
             width: 90%;
             padding: 10px;
-            margin-bottom: 16px;
             border-radius: 6px;
             border: 1px solid #ccc;
-            font-size: 16px;
         }
 
         .form-container select {
             padding: 8px 12px;
-            font-size: 16px;
             border-radius: 6px;
             border: 1px solid #ccc;
             width: 120px;
-            margin-bottom: 14px;
         }
 
         .form-container button {
             padding: 10px 16px;
-            font-size: 16px;
             border: none;
             border-radius: 6px;
             background-color: #0a3d80;
@@ -104,41 +116,43 @@
             background-color: #05234a;
         }
 
+        /* Make the chart area about half as wide as the available content */
         #prediction-results {
             margin-top: 20px;
+            background-color: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            width: 75%;            /* roughly half width */
+            flex: none;            /* do not flex-grow */
+            box-sizing: border-box;
         }
 
-        table {
-            border-collapse: collapse;
-            width: 100%;
-        }
-
-        table, th, td {
-            border: 1px solid #ccc;
-        }
-
-        th, td {
-            padding: 8px;
-            text-align: center;
-        }
-
-        th {
-            background-color: #0a3d80;
-            color: white;
-        }
-
-        td {
-            background-color: #e0e7ff;
+        #predictionChart {
+            width: 100% !important;
+            height: 500px !important;
+            display: block;
         }
 
         .error {
             color: red;
             margin-top: 10px;
         }
+
+        /* responsive: stack vertically on smaller screens */
+        @media (max-width: 900px) {
+            .experiment-row {
+                flex-direction: column;
+            }
+            .form-container,
+            #prediction-results {
+                width: 125%;
+                flex: none;
+            }
+        }
     </style>
 </head>
 <body>
-    <!-- Sidebar -->
     <div class="sidebar">
         <button onclick="location.href='/'">Home</button>
         <button onclick="location.href='/data'">Data</button>
@@ -147,52 +161,70 @@
         <button onclick="location.href='/suggestions'">Dosage Suggestions</button>
     </div>
 
-    <!-- Main content -->
     <div class="main-content">
         <h1>Experiment</h1>
         <p>This is the page for experiment</p>
 
-        <div class="form-container">
-            <h2>Enter Values</h2>
+        <div class="experiment-row">
+            <div class="form-container">
+                <h2>Enter Time of Day and Dosage</h2>
 
-            <label for="value1">Time of Day:</label>
-            <select id="value1" name="value1">
-                <option value="1">12 A.M.</option>
-                <option value="2">1 A.M.</option>
-                <option value="3">2 A.M.</option>
-                <option value="4">3 A.M.</option>
-                <option value="5">4 A.M.</option>
-                <option value="6">5 A.M.</option>
-                <option value="7">6 A.M.</option>
-                <option value="8">7 A.M.</option>
-                <option value="9">8 A.M.</option>
-                <option value="10">9 A.M.</option>
-                <option value="11">10 A.M.</option>
-                <option value="12">11 A.M.</option>
-                <option value="13">12 P.M.</option>
-                <option value="14">1 P.M.</option>
-                <option value="15">2 P.M.</option>
-                <option value="16">3 P.M.</option>
-                <option value="17">4 P.M.</option>
-                <option value="18">5 P.M.</option>
-                <option value="19">6 P.M.</option>
-                <option value="20">7 P.M.</option>
-                <option value="21">8 P.M.</option>
-                <option value="22">9 P.M.</option>
-                <option value="23">10 P.M.</option>
-                <option value="24">11 P.M.</option>
-            </select>
+                <label for="value1">Time of Day:</label>
+                <select id="value1" name="value1">
+                    <option value="1">12 A.M.</option>
+                    <option value="2">1 A.M.</option>
+                    <option value="3">2 A.M.</option>
+                    <option value="4">3 A.M.</option>
+                    <option value="5">4 A.M.</option>
+                    <option value="6">5 A.M.</option>
+                    <option value="7">6 A.M.</option>
+                    <option value="8">7 A.M.</option>
+                    <option value="9">8 A.M.</option>
+                    <option value="10">9 A.M.</option>
+                    <option value="11">10 A.M.</option>
+                    <option value="12">11 A.M.</option>
+                    <option value="13">12 P.M.</option>
+                    <option value="14">1 P.M.</option>
+                    <option value="15">2 P.M.</option>
+                    <option value="16">3 P.M.</option>
+                    <option value="17">4 P.M.</option>
+                    <option value="18">5 P.M.</option>
+                    <option value="19">6 P.M.</option>
+                    <option value="20">7 P.M.</option>
+                    <option value="21">8 P.M.</option>
+                    <option value="22">9 P.M.</option>
+                    <option value="23">10 P.M.</option>
+                    <option value="24">11 P.M.</option>
+                </select>
 
-            <label for="value2">Desired Dosage (ml):</label>
-            <input type="number" id="value2" name="value2" placeholder="Enter desired dosage">
+                <label for="value2">Desired Dosage (ml):</label>
+                <input type="number" id="value2" name="value2" placeholder="Enter desired dosage">
 
-            <button type="button" id="predict-btn">Predict</button>
+                <button type="button" id="predict-btn">Predict</button>
+            </div>
 
-            <div id="prediction-results"></div>
+            <div id="prediction-results">
+                <canvas id="predictionChart"></canvas>
+                <div id="sensitivity"></div>
+                <div id="errorMsg" class="error" style="display:none;"></div>
+            </div>
         </div>
     </div>
 
     <script>
+        // Helper: parse numeric-ish values safely (strip units like " bpm")
+        function toNumber(val) {
+            if (val === null || val === undefined) return null;
+            if (typeof val === 'number') return Number.isFinite(val) ? val : null;
+            if (typeof val === 'string') {
+                const cleaned = val.trim().replace(/[^0-9.+-eE]/g, '');
+                const n = parseFloat(cleaned);
+                return Number.isFinite(n) ? n : null;
+            }
+            const n = Number(val);
+            return Number.isFinite(n) ? n : null;
+        }
+
         // Fetch baseline data from localStorage
         function getBaselineData() {
             let stored = localStorage.getItem("dataBoxes");
@@ -216,25 +248,31 @@
             };
         }
 
-        const predictButton = document.getElementById('predict-btn');
-        const resultsDiv = document.getElementById('prediction-results');
+        const predictBtn = document.getElementById('predict-btn');
+        const ctx = document.getElementById('predictionChart').getContext('2d');
+        const sensitivityDiv = document.getElementById('sensitivity');
+        const errorDiv = document.getElementById('errorMsg');
 
-        predictButton.addEventListener('click', async () => {
+        let chart = null;
+
+        predictBtn.addEventListener('click', async () => {
+            errorDiv.style.display = 'none';
+            sensitivityDiv.innerHTML = '';
+
             const dosage = parseFloat(document.getElementById('value2').value);
             const timeOfDay = parseInt(document.getElementById('value1').value);
 
-            resultsDiv.innerHTML = ""; // Clear previous results
-
             if (isNaN(dosage)) {
-                resultsDiv.innerHTML = "<div class='error'>Please enter a valid dosage!</div>";
+                errorDiv.innerText = "Please enter a valid dosage.";
+                errorDiv.style.display = 'block';
                 return;
             }
 
-            // Load patient data from localStorage
+            // Load patient data
             let patientData = getBaselineData();
             const stored = localStorage.getItem("patient_data");
             if (stored) {
-                patientData = JSON.parse(stored);
+                try { patientData = JSON.parse(stored); } catch (e) { /* ignore */ }
             }
 
             const payload = {
@@ -243,40 +281,152 @@
                 patient_data: patientData
             };
 
+            predictBtn.disabled = true;
+            predictBtn.innerText = 'Predicting...';
+
             try {
                 const response = await fetch("/api/predict_experiment", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(payload)
                 });
+
                 const result = await response.json();
 
-                if (response.ok) {
-                    // Build HTML table
-                    let html = `<h3>Predicted Next 8 Hours:</h3>
-                                <table>
-                                <tr><th>Hour</th><th>SBP</th><th>DBP</th><th>HR</th></tr>`;
+                if (!response.ok) {
+                    const msg = (result && result.error) ? result.error : 'Server error';
+                    throw new Error(msg);
+                }
 
-                    result.predictions.forEach(p => {
-                        html += `<tr>
-                                    <td>${p.target_hour-2}</td>
-                                    <td>${p.sbp_pred.toFixed(1)}</td>
-                                    <td>${p.dbp_pred.toFixed(1)}</td>
-                                    <td>${p.hr_pred.toFixed(1)}</td>
-                                 </tr>`;
-                    });
+                if (!result || !Array.isArray(result.predictions)) {
+                    throw new Error("Unexpected response format from API.");
+                }
 
-                    html += `</table>`;
-                    html += `<p><strong>Sensitivity:</strong> ${result.sensitivity.toFixed(3)}</p>`;
+                // Build points similar to suggestions.html
+                const dataPoints = result.predictions.map(p => {
+                    const rawHour = p.target_hour ?? p.hour ?? p.hour_offset ?? p.t_hour ?? p.targetHour;
+                    const xRaw = toNumber(rawHour);
+                    const x = (xRaw === null) ? 0 : (Math.round(xRaw) - 2);
 
-                    resultsDiv.innerHTML = html;
+                    return {
+                        x: x,
+                        sbp: toNumber(p.sbp_pred ?? p.sbp ?? p.sbp_predicted),
+                        dbp: toNumber(p.dbp_pred ?? p.dbp ?? p.dbp_predicted),
+                        hr:  toNumber(p.hr_pred ?? p.hr ?? p.heart_rate ?? p.hr_predicted)
+                    };
+                });
 
+                const sbpData = dataPoints.map(d => ({ x: d.x, y: d.sbp }));
+                const dbpData = dataPoints.map(d => ({ x: d.x, y: d.dbp }));
+                const hrData  = dataPoints.map(d => ({ x: d.x, y: d.hr }));
+
+                // Debug logs so you can inspect numeric values
+                console.log('sbpData', sbpData);
+                console.log('dbpData', dbpData);
+                console.log('hrData', hrData);
+
+                // Destroy previous chart if exists
+                if (chart) chart.destroy();
+
+                chart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        datasets: [
+                            {
+                                label: 'SBP (mmHg)',
+                                data: sbpData.filter(d => d.y !== null),
+                                borderColor: 'red',
+                                backgroundColor: 'rgba(255,0,0,0.1)',
+                                fill: false,
+                                tension: 0.2,
+                                pointRadius: 4,
+                                pointHoverRadius: 8,
+                                pointHitRadius: 12,
+                                parsing: { x: 'x', y: 'y' }
+                            },
+                            {
+                                label: 'DBP (mmHg)',
+                                data: dbpData.filter(d => d.y !== null),
+                                borderColor: 'blue',
+                                backgroundColor: 'rgba(0,0,255,0.1)',
+                                fill: false,
+                                tension: 0.2,
+                                pointRadius: 4,
+                                pointHoverRadius: 8,
+                                pointHitRadius: 12,
+                                parsing: { x: 'x', y: 'y' }
+                            },
+                            {
+                                label: 'Heart Rate (bpm)',
+                                data: hrData.filter(d => d.y !== null),
+                                borderColor: 'green',
+                                backgroundColor: 'rgba(0,128,0,0.12)',
+                                fill: false,
+                                tension: 0.2,
+                                pointRadius: 4,
+                                pointHoverRadius: 8,
+                                pointHitRadius: 12,
+                                parsing: { x: 'x', y: 'y' }
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        interaction: {
+                            mode: 'nearest',
+                            axis: 'x',
+                            intersect: false
+                        },
+                        plugins: {
+                            legend: { position: 'top' },
+                            tooltip: {
+                                enabled: true,
+                                mode: 'nearest',
+                                intersect: false,
+                                callbacks: {
+                                    label: function(context) {
+                                        const label = context.dataset.label || '';
+                                        const y = context.parsed.y;
+                                        return `${label}: ${y}`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                type: 'linear',
+                                title: { display: true, text: 'Hours' }
+                            },
+                            y: {
+                                title: { display: true, text: 'Value' }
+                            }
+                        }
+                    }
+                });
+
+                // Show sensitivity if present
+                if (typeof result.sensitivity === 'number') {
+                    sensitivityDiv.innerHTML = `<p><strong>Sensitivity:</strong> ${result.sensitivity.toFixed(3)}</p>`;
                 } else {
-                    resultsDiv.innerHTML = `<div class='error'>Error: ${result.error}</div>`;
+                    sensitivityDiv.innerHTML = '';
                 }
             } catch (err) {
-                resultsDiv.innerHTML = `<div class='error'>Request failed: ${err}</div>`;
+                console.error(err);
+                errorDiv.innerText = "Request failed: " + err.message;
+                errorDiv.style.display = 'block';
+            } finally {
+                predictBtn.disabled = false;
+                predictBtn.innerText = 'Predict';
             }
+        });
+
+        // Optional: draw an empty chart at load for layout stability
+        window.addEventListener('load', () => {
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: { datasets: [] },
+                options: { responsive: true }
+            });
         });
     </script>
 </body>
