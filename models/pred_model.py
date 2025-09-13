@@ -1,18 +1,21 @@
 """
 Seq2Seq LSTM (PyTorch) prototype — TRAINING WITH SYNTHETIC DATA
 ────────────────────────────────────────────────────────────────
-Changes compared to the previous version
-1.  “Sensitivity” is **strictly bounded to [0, 1]**
-      • Generated that way in the synthetic data.
-      • Decoder head ends with a Sigmoid().
-      • No external scaler is used for sensitivity.
-2.  All references to `scaler_sens` (+ *.joblib) removed.
-3.  Prediction helper now returns the sigmoid output directly.
+New in this revision
+🆕 1. The model now **also predicts heart-rate (HR)** for every future hour,
+      so the decoder outputs 3 values per step:  [SBP, DBP, HR].
+🆕 2. The synthetic generator creates `hr_1 … hr_8` targets.
+🆕 3. `dec_init` uses the current **SBP, DBP, HR** (scaled) as first decoder input.
+🆕 4. Sequence shapes change from (seq_len, 2) to (seq_len, 3).
+     All scalers, losses, and helper functions updated accordingly.
 
-NOT FOR CLINICAL USE — prototype only.
+Other features from the previous version are kept:
+• Sensitivity in the 0–1 range (sigmoid head, no scaler).
+• Still “prototype only”, *not for clinical use*.
+
 """
 
-import os, random, math, joblib
+import random, math, joblib, os
 from typing import Dict
 import numpy as np, pandas as pd
 
@@ -23,12 +26,12 @@ from sklearn.preprocessing import StandardScaler
 # ───────────────────── CONFIG ──────────────────────
 DEVICE  = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 SEQ_LEN = 8
-BATCH_SIZE, EPOCHS, LR = 64, 18, 1e-3
+BATCH_SIZE, EPOCHS, LR = 64, 50000, 1e-3
 TEACHER_FORCING_RATIO = .5
 RANDOM_SEED = 42
 SENS_WEIGHT = 1.0
 
-MODEL_OUT        = "seq2seq_bp_sens_synth_best.pt"
+MODEL_OUT        = "seq2seq_bp_hr_sens_best.pt"
 SCALER_X_PATH    = "scaler_X_synth.joblib"
 SCALER_Y_SEQ_PATH= "scaler_y_seq_synth.joblib"
 
@@ -47,10 +50,11 @@ NUMERIC_FEATURES = [
 ]
 SEQ_TARGET_SBPS = [f"sbp_{i}" for i in range(1, SEQ_LEN+1)]
 SEQ_TARGET_DBPS = [f"dbp_{i}" for i in range(1, SEQ_LEN+1)]
+SEQ_TARGET_HRS  = [f"hr_{i}"  for i in range(1, SEQ_LEN+1)]
 SENS_COL = "sensitivity"
 
 # ────────────── SYNTHETIC DATA ──────────────────────
-def generate_synthetic_dataframe(n_samples=50000, seed=RANDOM_SEED)->pd.DataFrame:
+def generate_synthetic_dataframe(n_samples=50_000, seed=RANDOM_SEED)->pd.DataFrame:
     rng, rows = np.random.RandomState(seed), []
     for _ in range(n_samples):
         avg_day_sbp = rng.normal(125,10); avg_day_dbp = rng.normal(77,6)
@@ -67,13 +71,14 @@ def generate_synthetic_dataframe(n_samples=50000, seed=RANDOM_SEED)->pd.DataFram
         dbp_now = avg_day_dbp + circadian_now*.4+ rng.normal(0,3) - lisinopril_mg_now*.35
         hr_now  = baseline_hr + rng.normal(0,5) + exercise_hours_today*5
 
-        sbp_future, dbp_future = [], []
+        sbp_future, dbp_future, hr_future = [], [], []
         for h in range(1,SEQ_LEN+1):
             circ = 5*math.sin(2*math.pi*(current_time_hour+h)/24)
             drug_eff = lisinopril_mg_now*.6 * math.exp(-((h-3)**2)/(2*2.**2))
             sbp_f = avg_day_sbp + circ - drug_eff + rng.normal(0,4)+diabetes*3+kidney*4
             dbp_f = avg_day_dbp + circ*.4- drug_eff*.6 + rng.normal(0,3)+diabetes*2+kidney*3
-            sbp_future.append(sbp_f); dbp_future.append(dbp_f)
+            hr_f  = baseline_hr + circ*.2 + rng.normal(0,5) + exercise_hours_today*5*math.exp(-h/4)
+            sbp_future.append(sbp_f); dbp_future.append(dbp_f); hr_future.append(hr_f)
 
         # ─── 0-1 sensitivity ──────────────────────
         base_sens = .5 + .02*(65-age)/65 + diabetes*.2 + kidney*.25
@@ -82,7 +87,7 @@ def generate_synthetic_dataframe(n_samples=50000, seed=RANDOM_SEED)->pd.DataFram
             peak_drop = max(0., avg_day_sbp - min(sbp_future))
             est = peak_drop / max(1., lisinopril_mg_now)
         else: est = base_sens + rng.normal(0,.05)
-        sens_01 = float(np.clip(est/5.0 + rng.normal(0,.02), 0., 1.))  #  ↩︎ 0-1
+        sens_01 = float(np.clip(est/5.0 + rng.normal(0,.02), 0., 1.))
 
         row = {
             "avg_day_sbp":avg_day_sbp,"avg_day_dbp":avg_day_dbp,"baseline_hr":baseline_hr,
@@ -91,8 +96,8 @@ def generate_synthetic_dataframe(n_samples=50000, seed=RANDOM_SEED)->pd.DataFram
             "lisinopril_mg_now":lisinopril_mg_now,"current_time_hour":current_time_hour,
             "sbp_now":sbp_now,"dbp_now":dbp_now,"hr_now":hr_now,SENS_COL:sens_01
         }
-        for i,(s,d) in enumerate(zip(sbp_future,dbp_future),1):
-            row[f"sbp_{i}"]=s; row[f"dbp_{i}"]=d
+        for i,(s,d,h) in enumerate(zip(sbp_future,dbp_future,hr_future),1):
+            row[f"sbp_{i}"]=s; row[f"dbp_{i}"]=d; row[f"hr_{i}"]=h
         rows.append(row)
     return pd.DataFrame(rows)
 
@@ -105,24 +110,26 @@ class BPCSynthDataset(Dataset):
         sex  = self.df["sex"].map({'M':0.,'F':1.}).values.astype(np.float32).reshape(-1,1)
         self.X_raw = np.concatenate([X_num,sex],1)
 
-        parts=[ self.df[[s,d]].values.astype(np.float32)
-                for s,d in zip(SEQ_TARGET_SBPS,SEQ_TARGET_DBPS)]
-        self.y_seq_raw = np.stack(parts,1)
-        self.y_sens = self.df[SENS_COL].values.astype(np.float32).reshape(-1,1) # 0-1, un-scaled
+        # Build (N, seq_len, 3) target tensor
+        seq_parts=[]
+        for i in range(SEQ_LEN):
+            seq_parts.append(
+                self.df[[SEQ_TARGET_SBPS[i], SEQ_TARGET_DBPS[i], SEQ_TARGET_HRS[i]]]
+                    .values.astype(np.float32)
+            )
+        self.y_seq_raw = np.stack(seq_parts,1)  # (N, seq, 3)
+        self.y_sens = self.df[SENS_COL].values.astype(np.float32).reshape(-1,1)
 
-        # ── scalers for X & sequence ──
+        # Fit scalers
         if fit_scalers:
-            if scaler_X is None:
-                scaler_X=StandardScaler().fit(self.X_raw)
+            if scaler_X is None: scaler_X=StandardScaler().fit(self.X_raw)
             if scaler_y_seq is None:
                 scaler_y_seq=StandardScaler().fit(self.y_seq_raw.reshape(len(self.y_seq_raw),-1))
         self.scaler_X, self.scaler_y_seq = scaler_X, scaler_y_seq
 
-        self.X = (self.scaler_X.transform(self.X_raw) if self.scaler_X else self.X_raw).astype(np.float32)
-        if self.scaler_y_seq:
-            flat = self.y_seq_raw.reshape(len(self.y_seq_raw),-1)
-            self.y_seq = self.scaler_y_seq.transform(flat).reshape(len(self.y_seq_raw),SEQ_LEN,2).astype(np.float32)
-        else: self.y_seq = self.y_seq_raw
+        self.X = self.scaler_X.transform(self.X_raw).astype(np.float32)
+        flat = self.y_seq_raw.reshape(len(self.y_seq_raw),-1)
+        self.y_seq = self.scaler_y_seq.transform(flat).reshape(len(self.y_seq_raw),SEQ_LEN,3)
 
     def __len__(self): return len(self.X)
     def __getitem__(self,idx): return self.X[idx], self.y_seq[idx], self.y_sens[idx]
@@ -150,7 +157,7 @@ class Seq2SeqBP(nn.Module):
         self.h0_proj=nn.Linear(lat,dec_hid); self.c0_proj=nn.Linear(lat,dec_hid)
         self.sens_head=nn.Sequential(
             nn.Linear(lat,max(8,lat//2)),nn.ReLU(),
-            nn.Linear(max(8,lat//2),1), nn.Sigmoid())  # 0-1 bound
+            nn.Linear(max(8,lat//2),1), nn.Sigmoid())
 
     def forward(self,src,dec_init=None,trg_seq=None,teacher_forcing_ratio=.5):
         b = src.size(0)
@@ -161,21 +168,24 @@ class Seq2SeqBP(nn.Module):
         c0=torch.tanh(self.c0_proj(lat)).unsqueeze(0)
         hidden=(h0,c0)
 
-        dec_in = dec_init if dec_init is not None else torch.zeros(b,1,2,device=src.device)
+        dec_in = dec_init if dec_init is not None else torch.zeros(b,1,3,device=src.device)
         outs=[]
         for t in range(SEQ_LEN):
-            pred,hidden = self.decoder(dec_in,hidden)
+            pred,hidden = self.decoder(dec_in,hidden)          # pred (b,1,3)
             outs.append(pred)
-            dec_in = trg_seq[:,t].unsqueeze(1) if (trg_seq is not None and random.random()<teacher_forcing_ratio) else pred.detach()
-        return torch.cat(outs,1), sens
+            dec_in = ( trg_seq[:,t].unsqueeze(1)
+                       if trg_seq is not None and random.random()<teacher_forcing_ratio
+                       else pred.detach() )
+        return torch.cat(outs,1), sens                         # (b,seq,3), (b,1)
 
 # ────────────── TRAIN / EVAL ─────────────────────────
 def train_one_epoch(model,loader,opt,crit_seq,crit_sens,device):
     model.train(); tot=0
-    sbp_i,dbp_i = NUMERIC_FEATURES.index("sbp_now"), NUMERIC_FEATURES.index("dbp_now")
+    sbp_i=NUMERIC_FEATURES.index("sbp_now"); dbp_i=NUMERIC_FEATURES.index("dbp_now")
+    hr_i =NUMERIC_FEATURES.index("hr_now")
     for X,y_seq,y_sens in loader:
         X,y_seq,y_sens=X.to(device),y_seq.to(device),y_sens.to(device)
-        dec_init=torch.cat([X[:,sbp_i].unsqueeze(1),X[:,dbp_i].unsqueeze(1)],1).unsqueeze(1)
+        dec_init=torch.cat([X[:,sbp_i:sbp_i+1],X[:,dbp_i:dbp_i+1],X[:,hr_i:hr_i+1]],1).unsqueeze(1)
         opt.zero_grad()
         p_seq,p_sens=model(X,dec_init,trg_seq=y_seq,teacher_forcing_ratio=TEACHER_FORCING_RATIO)
         loss=(crit_seq(p_seq,y_seq)+SENS_WEIGHT*crit_sens(p_sens,y_sens))
@@ -185,16 +195,17 @@ def train_one_epoch(model,loader,opt,crit_seq,crit_sens,device):
 @torch.no_grad()
 def eval_one_epoch(model,loader,crit_seq,crit_sens,device):
     model.eval(); tot=0
-    sbp_i,dbp_i = NUMERIC_FEATURES.index("sbp_now"), NUMERIC_FEATURES.index("dbp_now")
+    sbp_i=NUMERIC_FEATURES.index("sbp_now"); dbp_i=NUMERIC_FEATURES.index("dbp_now")
+    hr_i =NUMERIC_FEATURES.index("hr_now")
     for X,y_seq,y_sens in loader:
         X,y_seq,y_sens=X.to(device),y_seq.to(device),y_sens.to(device)
-        dec_init=torch.cat([X[:,sbp_i].unsqueeze(1),X[:,dbp_i].unsqueeze(1)],1).unsqueeze(1)
+        dec_init=torch.cat([X[:,sbp_i:sbp_i+1],X[:,dbp_i:dbp_i+1],X[:,hr_i:hr_i+1]],1).unsqueeze(1)
         p_seq,p_sens=model(X,dec_init,trg_seq=None,teacher_forcing_ratio=0.)
         tot+=(crit_seq(p_seq,y_seq)+SENS_WEIGHT*crit_sens(p_sens,y_sens)).item()*X.size(0)
     return tot/len(loader.dataset)
 
 # ────────────── TRAINING DRIVER ──────────────────────
-def fit_on_synthetic(n_samples=50000,epochs=EPOCHS,batch_size=BATCH_SIZE,lr=LR):
+def fit_on_synthetic(n_samples=50_000,epochs=EPOCHS,batch_size=BATCH_SIZE,lr=LR):
     print("Generating synthetic data...")
     df = generate_synthetic_dataframe(n_samples)
     idx=np.random.permutation(len(df)); split=int(.8*len(df))
@@ -207,7 +218,7 @@ def fit_on_synthetic(n_samples=50000,epochs=EPOCHS,batch_size=BATCH_SIZE,lr=LR):
 
     tl=DataLoader(train_ds,batch_size,shuffle=True); vl=DataLoader(val_ds,batch_size)
     in_dim=train_ds.X.shape[1]
-    model=Seq2SeqBP(in_dim,64,128,2,128,2).to(DEVICE)
+    model=Seq2SeqBP(in_dim,64,128,3,128,3).to(DEVICE)
     opt=torch.optim.Adam(model.parameters(),lr)
     c_seq,c_sens=nn.MSELoss(),nn.MSELoss()
 
@@ -215,7 +226,7 @@ def fit_on_synthetic(n_samples=50000,epochs=EPOCHS,batch_size=BATCH_SIZE,lr=LR):
     for ep in range(1,epochs+1):
         tr=train_one_epoch(model,tl,opt,c_seq,c_sens,DEVICE)
         va=eval_one_epoch(model,vl,c_seq,c_sens,DEVICE)
-        print(f"Epoch {ep}/{epochs}  Train {tr:.5f}  Val {va:.5f}")
+        print(f"Epoch {ep:2d}/{epochs}  Train {tr:.5f}  Val {va:.5f}")
         if va<best:
             best=va
             torch.save({"model_state_dict":model.state_dict(),
@@ -229,7 +240,7 @@ def fit_on_synthetic(n_samples=50000,epochs=EPOCHS,batch_size=BATCH_SIZE,lr=LR):
 def load_model_and_scalers(path=MODEL_OUT):
     ckpt=torch.load(path,map_location=DEVICE)
     scaler_X=joblib.load(ckpt["scaler_X_path"]); scaler_y_seq=joblib.load(ckpt["scaler_y_seq_path"])
-    model=Seq2SeqBP(len(scaler_X.mean_),64,128,2,128,2).to(DEVICE)
+    model=Seq2SeqBP(len(scaler_X.mean_),64,128,3,128,3).to(DEVICE)
     model.load_state_dict(ckpt["model_state_dict"]); model.eval()
     return model,scaler_X,scaler_y_seq
 
@@ -239,17 +250,19 @@ def predict_from_dict(model,scaler_X,scaler_y_seq,row:Dict):
     feats=np.array([row.get(k,0.) for k in NUMERIC_FEATURES]+[sex_val],dtype=np.float32).reshape(1,-1)
     X=torch.from_numpy(scaler_X.transform(feats)).to(DEVICE)
 
-    sbp_i,dbp_i=NUMERIC_FEATURES.index("sbp_now"),NUMERIC_FEATURES.index("dbp_now")
-    dec_init=torch.cat([X[:,sbp_i].unsqueeze(1),X[:,dbp_i].unsqueeze(1)],1).unsqueeze(1)
+    sbp_i=NUMERIC_FEATURES.index("sbp_now"); dbp_i=NUMERIC_FEATURES.index("dbp_now")
+    hr_i =NUMERIC_FEATURES.index("hr_now")
+    dec_init=torch.cat([X[:,sbp_i:sbp_i+1],X[:,dbp_i:dbp_i+1],X[:,hr_i:hr_i+1]],1).unsqueeze(1)
 
     seq_scaled,sens=model(X,dec_init,trg_seq=None,teacher_forcing_ratio=0.0)
-    seq_scaled=seq_scaled.squeeze(0).cpu().numpy()
-    seq= scaler_y_seq.inverse_transform(seq_scaled.reshape(1,-1)).reshape(SEQ_LEN,2)
-    sens_val=float(sens.item())  # already 0-1
+    seq_scaled=seq_scaled.squeeze(0).cpu().numpy()            # (seq,3)
+    seq= scaler_y_seq.inverse_transform(seq_scaled.reshape(1,-1)).reshape(SEQ_LEN,3)
+    sens_val=float(sens.item())
 
     base_hour=int(row.get("current_time_hour",0))
     out=[{"hour_offset":i+1,"target_hour":(base_hour+i+1)%24,
-          "sbp_pred":float(seq[i,0]),"dbp_pred":float(seq[i,1])} for i in range(SEQ_LEN)]
+          "sbp_pred":float(seq[i,0]),"dbp_pred":float(seq[i,1]),"hr_pred":float(seq[i,2])}
+         for i in range(SEQ_LEN)]
     return pd.DataFrame(out), sens_val
 
 # ──────────────────── DEMO ──────────────────────────
@@ -262,7 +275,7 @@ if __name__=="__main__":
               "bmi":28.5,"diabetes":1,"kidney":1,"sodium_mg_today":3200,"exercise_hours_today":0.0,
               "lisinopril_mg_now":10,"current_time_hour":14,"sbp_now":135,"dbp_now":84,"hr_now":78}
     df_p,sens=predict_from_dict(model,sc_X,sc_Y,sample)
-    print("\nPredicted next 8 h BP:")
+    print("\nPredicted next 8 h vitals (SBP / DBP / HR):")
     print(df_p.to_string(index=False))
     print(f"\nPredicted sensitivity (0-1): {sens:.4f}")
-    print("\nArtifacts:",SCALER_X_PATH,SCALER_Y_SEQ_PATH,MODEL_OUT)
+    print("\nArtifacts saved:",SCALER_X_PATH,SCALER_Y_SEQ_PATH,MODEL_OUT)
