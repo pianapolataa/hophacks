@@ -196,8 +196,8 @@
         };
 
         // Load from localStorage if available
-        // let data = JSON.parse(localStorage.getItem("dataBoxes")) || defaultData;
-        let data = defaultData
+        let data = JSON.parse(localStorage.getItem("dataBoxes")) || defaultData;
+        // let data = defaultData
         const boxesContainer = document.getElementById("boxes");
 
         function saveToLocalStorage() {

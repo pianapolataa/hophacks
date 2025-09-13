@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Flask Sidebar Layout</title>
+    <title>S</title>
     <style>
         body {
             margin: 0;
@@ -159,3 +159,23 @@ select {
     </div>
 </body>
 </html>
+<script>
+    const predictButton = document.querySelector('.form-container button');
+
+    predictButton.addEventListener('click', () => {
+        const timeOfDay = document.getElementById('value1').value;
+        const dosage = document.getElementById('value2').value;
+
+        // Validation: check if dosage is empty
+        if (dosage === '') {
+            alert('Error: Please enter the desired dosage!');
+            return; // Stop further execution
+        }
+
+        // If input is valid, proceed
+        alert(`Time of Day: ${timeOfDay}\nDesired Dosage: ${dosage} ml`);
+
+        // TODO: Call prediction logic here
+    });
+</script>
+
