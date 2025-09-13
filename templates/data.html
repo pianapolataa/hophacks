@@ -2,8 +2,44 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Flask Sidebar Layout</title>
+    <title>Data Page with Boxes</title>
+    
+    <!-- Google Fonts: Merriweather -->
+    <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@700&display=swap" rel="stylesheet">
+
     <style>
+        .info-box {
+    background-color: #e8f0fe; /* light blue */
+    padding: 20px;
+    border-radius: 8px;
+    width: 300px;
+}
+
+/* Make sure heading is block and text below */
+.info-box h2 {
+    margin-bottom: 10px; /* space between heading and details */
+}
+.sidebar button {
+    background: none;
+    border: none;
+    color: white;
+    padding: 15px;
+    text-align: left;
+    font-size: 20px;  /* larger text */
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.sidebar button:hover {
+    background-color: #0a3d80;
+}
+
+/* Special style for the Home button */
+.sidebar .home-btn {
+    background-color: #0a3d80; /* darker blue background */
+    font-weight: bold;         /* optional: make it stand out */
+}
+
         body {
             margin: 0;
             font-family: Arial, sans-serif;
@@ -24,7 +60,7 @@
         .sidebar button {
             background: none;
             border: none;
-            color: white;
+            color:  white;
             padding: 15px;
             text-align: left;
             font-size: 16px;
@@ -44,23 +80,86 @@
 
         h1 {
             color: #05234a;
+            font-family: 'Merriweather', serif;
+            font-size: 48px; /* larger heading */
+            margin-bottom: 20px;
         }
+        h2 {
+            color: #05234a;
+            font-family: 'Merriweather', serif;
+            font-size: 24px; /* larger heading */
+            margin-bottom: 10px;
+        }
+
+        /* Boxes container */
+        .boxes-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px; /* space between boxes */
+            margin-top: 20px;
+        }
+
+.box {
+    background-color: #e6eff8;
+    width: calc(50% - 10px);
+    min-height: 150px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center; /* vertical centering */
+    align-items: center;     /* horizontal centering */
+    text-align: center;      /* makes multiline text centered */
+    padding: 15px;
+    font-size: 18px;
+    color: black;
+    border-radius: 8px;
+    box-sizing: border-box;
+    line-height: 1.6;        /* nicer line spacing */
+}
+
+
     </style>
 </head>
 <body>
     <!-- Sidebar -->
-    <div class="sidebar">
-        <button onclick="location.href='/'">Home</button>
-        <button onclick="location.href='/data'">Data</button>
-        <button onclick="location.href='/experiment'">Experiment</button>
-        <button onclick="location.href='/effects'">Side Effects</button>
-        <button onclick="location.href='/rl'">RL</button>
-    </div>
+<div class="sidebar">
+    <button onclick="location.href='/'">Home</button>
+    <button class="home-btn" onclick="location.href='/data'">Data</button>
+    <button onclick="location.href='/experiment'">Experiment</button>
+    <button onclick="location.href='/effects'">Side Effects</button>
+    <button onclick="location.href='/rl'">RL</button>
+</div>
 
     <!-- Main content -->
     <div class="main-content">
         <h1>Data</h1>
         <p>This is the page for data</p>
+
+        <!-- Boxes -->
+        <div class="boxes-container">
+<div class="box">
+    <h2>General Information</h2>
+    Age: 35<br>
+    Sex: Male<br>
+    BMI: 20.0<br>
+    Diabetes: No
+</div>
+
+
+            <div class="box"><h2>Baselines</h2>
+            Average daytime resting SBP: 133 <br>
+            Average daytime resting DBP: 80 <br>
+            Baseline heart rate: 70 bpm <br>
+            </div>
+            <div class="box"><h2>Extra Information</h2>
+            Sodium Intake: 2400 mg <br>
+            Exercise: 0.5 hours <br>
+            </div>
+            <div class="box"><h2>Current Readings</h2>
+            SBP: 130 <br>
+            DBP: 81 <br>
+            Heart Rate: 72 bpm
+            </div>
+        </div>
     </div>
 </body>
 </html>

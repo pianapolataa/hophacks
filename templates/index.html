@@ -2,8 +2,37 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Flask Sidebar Layout</title>
+    <title>Home Page</title>
     <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #a0c4f2; /* light blue */
+            display: flex;
+        }
+
+        /* Sidebar */
+.sidebar button {
+    background: none;
+    border: none;
+    color: white;
+    padding: 15px;
+    text-align: left;
+    font-size: 20px;  /* larger text */
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.sidebar button:hover {
+    background-color: #0a3d80;
+}
+
+/* Special style for the Home button */
+.sidebar .home-btn {
+    background-color: #0a3d80; /* darker blue background */
+    font-weight: bold;         /* optional: make it stand out */
+}
+
         body {
             margin: 0;
             font-family: Arial, sans-serif;
@@ -24,7 +53,7 @@
         .sidebar button {
             background: none;
             border: none;
-            color: white;
+            color:  white;
             padding: 15px;
             text-align: left;
             font-size: 16px;
@@ -35,6 +64,7 @@
         .sidebar button:hover {
             background-color: #0a3d80;
         }
+
 
         /* Main content */
         .main-content {
@@ -50,7 +80,7 @@
 <body>
     <!-- Sidebar -->
     <div class="sidebar">
-        <button onclick="location.href='/'">Home</button>
+        <button class="home-btn"location.href='/'">Home</button>
         <button onclick="location.href='/data'">Data</button>
         <button onclick="location.href='/experiment'">Experiment</button>
         <button onclick="location.href='/effects'">Side Effects</button>
