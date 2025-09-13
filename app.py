@@ -18,9 +18,9 @@ def experiment():
 def effects():
     return render_template("effects.html")
 
-@app.route("/rl")
+@app.route("/suggestions")
 def rl():
-    return render_template("rl.html")
+    return render_template("suggestions.html")
 
 if __name__ == "__main__":
     app.run(debug=True)
