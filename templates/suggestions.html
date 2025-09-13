@@ -2,84 +2,231 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Flask Sidebar Layout</title>
+    <title>Dosage Suggestions</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
             margin: 0;
             font-family: Arial, sans-serif;
-            background-color: #a0c4f2; /* light blue */
+            background-color: #a0c4f2;
             display: flex;
         }
 
         /* Sidebar */
-/* Sidebar */
-.sidebar {
-    background-color: #05234a; /* dark blue */
-    width: 240px;
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-    padding-top: 20px;
-    gap: 6px;
-}
-
-.sidebar button {
-    background: none;
-    border: none;
-    color: white;
-    padding: 14px 18px;
-    text-align: left;
-    font-size: 18px; /* bigger text */
-    cursor: pointer;
-    transition: background 0.2s;
-    border-radius: 6px;
-    margin: 0 10px;
-}
-
-.sidebar button:hover {
-    background-color: #0a3d80; /* mid-blue */
-}
-
-.sidebar .home-btn {
-    background-color: #0a3d80; /* highlight home button */
-    font-weight: 700;
-}
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background-color: #a0c4f2; /* light blue */
+        .sidebar {
+            background-color: #05234a;
+            width: 240px;
+            height: 100vh;
             display: flex;
+            flex-direction: column;
+            padding-top: 20px;
+            gap: 6px;
         }
 
-        /* Sidebar */
-        /* Main content */
+        .sidebar button {
+            background: none;
+            border: none;
+            color: white;
+            padding: 14px 18px;
+            text-align: left;
+            font-size: 18px;
+            cursor: pointer;
+            transition: background 0.2s;
+            border-radius: 6px;
+            margin: 0 10px;
+        }
+
+        .sidebar button:hover {
+            background-color: #0a3d80;
+        }
+
+        .sidebar .home-btn {
+            background-color: #0a3d80;
+            font-weight: 700;
+        }
+
         .main-content {
             flex: 1;
             padding: 40px;
         }
 
-        h1 {
-            color: #05234a;
-            font-family: 'Merriweather', serif;
-            font-size: 48px;
-            margin: 0 0 8px 0;
+        h1 { color: #05234a; }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        th, td {
+            border: 1px solid #05234a;
+            padding: 8px;
+            text-align: center;
+        }
+
+        th {
+            background-color: #0a3d80;
+            color: white;
+        }
+
+        /* Dashboard style for chart */
+        .dashboard {
+            margin-top: 30px;
+            background-color: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
     </style>
 </head>
 <body>
-    <!-- Sidebar -->
     <div class="sidebar">
         <button onclick="location.href='/'">Home</button>
         <button onclick="location.href='/data'">Data</button>
         <button onclick="location.href='/experiment'">Experiment</button>
         <button onclick="location.href='/effects'">Side Effects</button>
-        <button class="home-btn" location.href='/suggestions'">Dosage Suggestions</button>
+        <button class="home-btn" onclick="location.href='/suggestions'">Dosage Suggestions</button>
     </div>
 
-    <!-- Main content -->
     <div class="main-content">
         <h1>Dosage Suggestions</h1>
-        <p>This is the page for RL</p>
+        <p>Top 5 recommended actions based on your input:</p>
+
+        <table id="suggestionsTable">
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Dose</th>
+                    <th>Hour</th>
+                    <th>Δ Sodium</th>
+                    <th>Δ Exercise</th>
+                    <th>Reward</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+
+        <div class="dashboard">
+            <canvas id="top1Chart" width="700" height="250"></canvas>
+        </div>
     </div>
+
+    <script>
+        // Fetch baseline data from localStorage
+        function getBaselineData() {
+            let stored = localStorage.getItem("dataBoxes");
+            if (!stored) return null;
+
+            let data = JSON.parse(stored);
+
+            return {
+                avg_sbp: Number(data["Baseline Measurements"]["Average daytime resting SBP"]),
+                avg_dbp: Number(data["Baseline Measurements"]["Average daytime resting DBP"]),
+                baseline_hr: Number(data["Baseline Measurements"]["Baseline heart rate (bpm)"]),
+                age: Number(data["General Information"]["Age"]),
+                sex: data["General Information"]["Sex"],
+                bmi: Number(data["General Information"]["BMI"]),
+                diabetes: data["General Information"]["Diabetes"] ? 1 : 0,
+                sodium_intake: Number(data["Extra Information"]["Sodium Intake (mg)"]),
+                exercise_today: Number(data["Extra Information"]["Exercise (hours)"])
+            };
+        }
+
+        async function fetchSuggestions() {
+            const baselineData = getBaselineData();
+            if (!baselineData) {
+                alert("No baseline data found in localStorage!");
+                return;
+            }
+
+            const response = await fetch("/api/get_suggestions", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(baselineData)
+            });
+
+            const result = await response.json();
+            renderSuggestions(result.top_5);
+            renderTop1Chart(result.top_1_prediction);
+        }
+
+        function renderSuggestions(top5) {
+            const tbody = document.querySelector("#suggestionsTable tbody");
+            tbody.innerHTML = "";
+
+            top5.forEach((item, idx) => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td>${idx+1}</td>
+                    <td>${item.dose}</td>
+                    <td>${item.hour}</td>
+                    <td>${item.delta_sodium}</td>
+                    <td>${item.delta_exercise}</td>
+                    <td>${item.reward.toFixed(1)}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderTop1Chart(predRecords) {
+            const dataPoints = predRecords.map(r => ({
+                x: r.hour_offset,
+                sbp: r.sbp_pred,
+                dbp: r.dbp_pred,
+                hr: r.hr_pred
+            }));
+
+            const ctx = document.getElementById("top1Chart").getContext("2d");
+
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: [
+                        {
+                            label: "SBP",
+                            data: dataPoints.map(p => ({x: p.x, y: p.sbp})),
+                            borderColor: "red",
+                            backgroundColor: "red",
+                            fill: false,
+                            tension: 0.2,
+                            pointRadius: 5
+                        },
+                        {
+                            label: "DBP",
+                            data: dataPoints.map(p => ({x: p.x, y: p.dbp})),
+                            borderColor: "blue",
+                            backgroundColor: "blue",
+                            fill: false,
+                            tension: 0.2,
+                            pointRadius: 5
+                        },
+                        {
+                            label: "HR",
+                            data: dataPoints.map(p => ({x: p.x, y: p.hr})),
+                            borderColor: "green",
+                            backgroundColor: "green",
+                            fill: false,
+                            tension: 0.2,
+                            pointRadius: 5
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { position: "top" } },
+                    scales: {
+                        x: { 
+                            type: 'linear', 
+                            title: { display: true, text: "Hour Offset" } 
+                        },
+                        y: { title: { display: true, text: "Value" } }
+                    }
+                }
+            });
+        }
+
+        // Trigger suggestions fetch on page load
+        fetchSuggestions();
+    </script>
 </body>
 </html>
