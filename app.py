@@ -70,6 +70,7 @@ def api_get_suggestions():
     Returns top 5 dosage suggestions + top 1 prediction for graphing.
     """
     baseline_info = request.json
+    print(baseline_info)
     # Run optimizer (it loads model internally)
     top_5 = optimize_patient(baseline_info)
 
