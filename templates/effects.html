@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Flask Sidebar Layout</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #a0c4f2; /* light blue */
+            display: flex;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            background-color: #05234a; /* dark blue */
+            width: 200px;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding-top: 20px;
+        }
+
+        .sidebar button {
+            background: none;
+            border: none;
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .sidebar button:hover {
+            background-color: #0a3d80;
+        }
+
+        /* Main content */
+        .main-content {
+            flex: 1;
+            padding: 40px;
+        }
+
+        h1 {
+            color: #05234a;
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <button onclick="location.href='/'">Home</button>
+        <button onclick="location.href='/data'">Data</button>
+        <button onclick="location.href='/experiment'">Experiment</button>
+        <button onclick="location.href='/effects'">Side Effects</button>
+        <button onclick="location.href='/rl'">RL</button>
+    </div>
+
+    <!-- Main content -->
+    <div class="main-content">
+        <h1>Effects</h1>
+        <p>This is the page for effects</p>
+    </div>
+</body>
+</html>
