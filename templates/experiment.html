@@ -7,72 +7,42 @@
         body {
             margin: 0;
             font-family: Arial, sans-serif;
-            background-color: #a0c4f2; /* light blue */
+            background-color: #a0c4f2;
             display: flex;
         }
 
         /* Sidebar */
-.sidebar button {
-    background: none;
-    border: none;
-    color: white;
-    padding: 15px;
-    text-align: left;
-    font-size: 20px;  /* larger text */
-    cursor: pointer;
-    transition: background 0.3s;
-}
-
-.sidebar button:hover {
-    background-color: #0a3d80;
-}
-
-/* Special style for the Home button */
-.sidebar .home-btn {
-    background-color: #0a3d80; /* darker blue background */
-    font-weight: bold;         /* optional: make it stand out */
-}
-
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background-color: #a0c4f2; /* light blue */
+        .sidebar {
+            background-color: #05234a;
+            width: 240px;
+            height: 100vh;
             display: flex;
+            flex-direction: column;
+            padding-top: 20px;
+            gap: 6px;
         }
 
-        /* Sidebar */
-.sidebar {
-    background-color: #05234a; /* dark blue */
-    width: 240px;
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-    padding-top: 20px;
-    gap: 6px;
-}
+        .sidebar button {
+            background: none;
+            border: none;
+            color: white;
+            padding: 14px 18px;
+            text-align: left;
+            font-size: 18px;
+            cursor: pointer;
+            transition: background 0.2s;
+            border-radius: 6px;
+            margin: 0 10px;
+        }
 
-.sidebar button {
-    background: none;
-    border: none;
-    color: white;
-    padding: 14px 18px;
-    text-align: left;
-    font-size: 18px; /* bigger text */
-    cursor: pointer;
-    transition: background 0.2s;
-    border-radius: 6px;
-    margin: 0 10px;
-}
+        .sidebar button:hover {
+            background-color: #0a3d80;
+        }
 
-.sidebar button:hover {
-    background-color: #0a3d80; /* mid-blue */
-}
-
-.sidebar .home-btn {
-    background-color: #0a3d80; /* highlight home button */
-    font-weight: 700;
-}
-
+        .sidebar .home-btn {
+            background-color: #0a3d80;
+            font-weight: 700;
+        }
 
         /* Main content */
         .main-content {
@@ -84,10 +54,55 @@
             color: #05234a;
             font-family: 'Merriweather', serif;
             font-size: 48px;
-            margin: 0 0 8px 0;
+            margin: 0 0 16px 0;
         }
 
+        .form-container {
+            margin-top: 20px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            max-width: 500px;
+        }
 
+        .form-container label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: bold;
+            color: #05234a;
+        }
+
+        .form-container input {
+            width: 90%;
+            padding: 10px;
+            margin-bottom: 16px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            font-size: 16px;
+        }
+
+        .form-container button {
+            padding: 10px 16px;
+            font-size: 16px;
+            border: none;
+            border-radius: 6px;
+            background-color: #0a3d80;
+            color: white;
+            cursor: pointer;
+        }
+select {
+    padding: 8px 12px;   /* space inside */
+    font-size: 16px;     /* larger text */
+    border-radius: 6px;  /* rounded corners */
+    border: 1px solid #ccc;
+    width: 120px;        /* control width */
+        margin-bottom: 14px; /* 👈 adds space below */
+
+}
+
+        .form-container button:hover {
+            background-color: #05234a;
+        }
     </style>
 </head>
 <body>
@@ -95,7 +110,7 @@
     <div class="sidebar">
         <button onclick="location.href='/'">Home</button>
         <button onclick="location.href='/data'">Data</button>
-        <button class="home-btn"location.href='/experiment'">Experiment</button>
+        <button class="home-btn" onclick="location.href='/experiment'">Experiment</button>
         <button onclick="location.href='/effects'">Side Effects</button>
         <button onclick="location.href='/suggestions'">Dosage Suggestions</button>
     </div>
@@ -104,6 +119,43 @@
     <div class="main-content">
         <h1>Experiment</h1>
         <p>This is the page for experiment</p>
+<div class="form-container">
+    <h2>Enter Values</h2>
+
+    <label for="value1">Time of Day:</label>
+    <select id="value1" name="value1">
+        <!-- Generate 24 options -->
+        <option value="1">12 A.M.</option>
+        <option value="2">1 A.M.</option>
+        <option value="3">2 A.M.</option>
+        <option value="4">3 A.M.</option>
+        <option value="5">4 A.M.</option>
+        <option value="6">5 A.M.</option>
+        <option value="7">6 A.M.</option>
+        <option value="8">7 A.M.</option>
+        <option value="9">8 A.M.</option>
+        <option value="10">9 A.M.</option>
+        <option value="11">10 A.M.</option>
+        <option value="12">11 A.M.</option>
+        <option value="13">12 P.M.</option>
+        <option value="14">1 P.M.</option>
+        <option value="15">2 P.M.</option>
+        <option value="16">3 P.M.</option>
+        <option value="17">4 P.M.</option>
+        <option value="18">5 P.M.</option>
+        <option value="19">6 P.M.</option>
+        <option value="20">7 P.M.</option>
+        <option value="21">8 P.M.</option>
+        <option value="22">9 P.M.</option>
+        <option value="23">10 P.M.</option>
+        <option value="24">11 P.M.</option>
+    </select>
+
+    <label for="value2">Desired Dosage (ml):</label>
+    <input type="number" id="value2" name="value2" placeholder="Enter desired dosage">
+
+    <button type="button">Predict</button>
+</div>
     </div>
 </body>
 </html>
