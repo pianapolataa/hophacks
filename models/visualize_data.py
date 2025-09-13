@@ -2,7 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # Load synthetic dataset
-df = pd.read_csv("/Users/sissi/Downloads/pythonstuff/hophacks/models/synthetic_bp_data.csv")
+df = pd.read_csv("synthetic_bp_data.csv")
 
 def plot_patient(pid):
     # Select data for this patient
