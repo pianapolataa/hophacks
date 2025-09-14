@@ -31,7 +31,7 @@ model.eval()
 
 def optimize_patient(baseline_info: dict):
     results = []
-    print(baseline_info)
+    # print(baseline_info)
     for dose, hour, delta_sodium, extra_ex in product(dose_grid, hour_grid, sodium_grid, exercise_grid):
         # copy baseline info
         patient = baseline_info.copy()
